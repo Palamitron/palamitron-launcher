@@ -133,30 +133,51 @@ class Home {
   }
 
   async initLaunch() {
-    document.querySelector(".play-btn").addEventListener("click", async () => {
-      await this.verifyModsBeforeLaunch();
-      const opts = await this.getLaunchOptions();
-      const playBtn = document.querySelector(".play-btn");
-      const info = document.querySelector(".text-download");
-      const progressBar = document.querySelector(".progress-bar");
+      document
+          .querySelector(".play-btn")
+          .addEventListener("click", async () => {
 
-      playBtn.style.display = "none";
-      info.style.display = "block";
-      launch.Launch(opts);
+              await this.verifyModsBeforeLaunch();
 
-      const launcherSettings = (await this.database.get("1234", "launcher"))
-        .value;
-      this.setupLaunchListeners(
-        launch,
-        info,
-        progressBar,
-        playBtn,
-        launcherSettings,
-      );
-    });
+              const playBtn = document.querySelector(".play-btn");
+              const info = document.querySelector(".text-download");
+              const progressBar = document.querySelector(".progress-bar");
+
+              playBtn.style.display = "none";
+              info.style.display = "block";
+              info.innerHTML = t("authorization");
+
+              const launchToken = await this.requestLaunchToken();
+
+              if (!launchToken) {
+                  console.error(
+                      "[Launcher] Lancement refusé : impossible d'obtenir un token."
+                  );
+
+                  playBtn.style.display = "block";
+                  info.style.display = "none";
+                  info.innerHTML = t("verification");
+                  return;
+              }
+
+              const opts = await this.getLaunchOptions(launchToken);
+
+              launch.Launch(opts);
+
+              const launcherSettings =
+                  (await this.database.get("1234", "launcher")).value;
+
+              this.setupLaunchListeners(
+                  launch,
+                  info,
+                  progressBar,
+                  playBtn,
+                  launcherSettings
+              );
+          });
   }
 
-  async getLaunchOptions() {
+  async getLaunchOptions(launchToken) {
     const urlpkg = this.getBaseUrl();
     const uuid = (await this.database.get("1234", "accounts-selected")).value;
     const account = (await this.database.get(uuid.selected, "accounts")).value;
@@ -195,7 +216,9 @@ class Home {
       intelEnabledMac:
         process.platform === "darwin" && process.arch === "arm64",
       downloadFileMultiple: 30,
-      JVM_ARGS: [],
+      JVM_ARGS: [
+          `-Dfspatches.token=${launchToken}`
+      ],
       GAME_ARGS: [],
       java: this.config.java,
       memory: {
@@ -423,6 +446,92 @@ class Home {
       t("december"),
     ];
     return { year, month: months[month], day };
+  }
+
+  async requestLaunchToken() {
+      try {
+          const selected = await this.database.get(
+              "1234",
+              "accounts-selected"
+          );
+
+          if (!selected || !selected.value || !selected.value.selected) {
+              console.error("[Launcher] Aucun compte sélectionné.");
+              return null;
+          }
+
+          const uuid = selected.value.selected;
+
+          const accountResult = await this.database.get(
+              uuid,
+              "accounts"
+          );
+
+          if (!accountResult || !accountResult.value) {
+              console.error("[Launcher] Compte introuvable.");
+              return null;
+          }
+
+          const account = accountResult.value;
+
+          if (!account.access_token) {
+              console.error("[Launcher] Access token AZauth absent.");
+              return null;
+          }
+
+          const baseUrl = settings_url.endsWith("/")
+              ? settings_url
+              : `${settings_url}/`;
+
+          const response = await fetch(`${baseUrl}api/launch-token`, {
+              method: "POST",
+              headers: {
+                  "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                  access_token: account.access_token
+              })
+          });
+
+          if (!response.ok) {
+              let data = null;
+
+              try {
+                  data = await response.json();
+              } catch (e) {
+                  console.error("[Launcher] Réponse serveur non JSON.");
+              }
+
+              console.error(
+                  `[Launcher] Launch token HTTP ${response.status}`,
+                  data
+              );
+
+              return null;
+          }
+
+          const data = await response.json();
+
+          if (!data.success || !data.token) {
+              console.error(
+                  "[Launcher] Le serveur a refusé le lancement.",
+                  data
+              );
+              return null;
+          }
+
+          console.log("[Launcher] Launch token obtenu.");
+
+          return data.token;
+
+      } catch (error) {
+          console.error(
+              "[Launcher] Impossible d'obtenir le launch token:",
+              error
+          );
+
+          return null;
+      }
   }
 
   async verifyModsBeforeLaunch() {
