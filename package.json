@@ -1,17 +1,17 @@
 {
-    "name": "conflictura",
-    "preductname": "Conflictura Launcher",
-    "version": "4.0.15",
-    "description": "Conflictura modded server launcher",
+    "name": "palamitron",
+    "preductname": "Palamitron",
+    "version": "0.0.1",
+    "description": "Palamitron modded server launcher",
     "main": "src/app.js",
-    "author": "Riptiaz/Boulldogo/Vexato/Luuxis",
-    "env": "azuriom",
-    "settings": "https://conflictura.eu",
+    "author": "Amitron",
+    "env": "panel",
+    "settings": "http://node01.amihost.fr:26045",
     "scripts": {
         "start": "cross-env-shell NODE_ENV=dev electron .",
         "build": "node build.js --obf=true --build=platform",
         "dev": "cross-env-shell DEV_TOOL=open nodemon --ignore AppData/ --ignore node_modules/ --legacy-watch --exec npm start",
-        "icon": "node build.js --icon=https://raw.githubusercontent.com/CentralCorp/CentralCorp-Launcher/master/src/assets/images/icon.png"
+        "icon": "node build.js --icon=https://palamitron.amihost.fr/storage/img/logo-one-letter.png"
     },
     "license": "CC0",
     "nodemonConfig": {
@@ -38,6 +38,6 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Riptiaz/CentralCorp-Launcher.git"
+        "url": "git+https://github.com/Palamitron/palamitron-launcher.git"
     }
 }
